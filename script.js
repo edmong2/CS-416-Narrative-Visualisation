@@ -5,6 +5,10 @@ console.log("Script loaded—and ready for D3!");
 const topoURL   = "https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json";
 const countyCSV = "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv";
 
+// wave annotation texts and button labels
+const waveLabels = ["Spring 2020 Surge", "Summer 2020 Surge", "Winter 2020 Surge"];
+const btnLabels  = ["Next",             "Next",              "Explore"];
+
 // 2. Globals for processed data
 let countyFeatures,
     dates,
@@ -93,17 +97,20 @@ Promise.all([
 d3.select("#loading").style("display", "none");
 });
 
-// HTML legend: clears & redraws in #legend-container
+
+// 1) HTML legend helper
 function updateLegendHTML(colorScale) {
   const [minVal, maxVal] = colorScale.domain();
-  const lc = d3.select("#legend-container").html("");  // clear
+  const lc = d3.select("#legend-container").html("");  // clear previous
 
   // bar
   lc.append("div")
     .attr("class", "legend-bar")
-    .style("background", `linear-gradient(to right, ${colorScale(minVal)}, ${colorScale(maxVal)})`);
+    .style("background",
+      `linear-gradient(to right, ${colorScale(minVal)}, ${colorScale(maxVal)})`
+    );
 
-  // numeric labels
+  // labels
   const labels = lc.append("div").attr("class","legend-labels");
   labels.append("span").text(Math.round(minVal));
   labels.append("span").text(Math.round(maxVal));
@@ -121,16 +128,12 @@ function drawBaseMap() {
 }
 
 
-// wave annotation texts and button labels
-const waveLabels = ["Spring 2020 Surge", "Summer 2020 Surge", "Winter 2020 Surge"];
-const btnLabels  = ["Next",             "Next",              "Explore"];
-
 function drawScene(i) {
-  // remove any old annotation div
+  // clear old annotation in controls
   d3.select("#controls").selectAll(".annotation").remove();
 
   if (i < 3) {
-    // 1) recolor counties
+    // recolor map
     const avgMap = waveAverages[i];
     const maxVal = d3.max(Array.from(avgMap.values()));
     const color  = d3.scaleSequential(d3.interpolateReds).domain([0, maxVal]);
@@ -139,23 +142,22 @@ function drawScene(i) {
        .transition().duration(500)
        .attr("fill", d => color(avgMap.get(d.id) || 0));
 
-    // 2) update HTML legend
+    // HTML legend
     updateLegendHTML(color);
 
-    // 3) add the wave text
+    // wave label
     d3.select("#controls")
       .append("div")
       .attr("class", "annotation")
-      .style("margin-left", "20px")
       .text(waveLabels[i]);
 
-    // 4) update button text & click handler
+    // button text + click
     d3.select("#next-btn")
       .text(btnLabels[i])
-      .attr("disabled", null)        // re-enable if it was disabled
+      .attr("disabled", null)
       .on("click", () => {
-         scene = Math.min(3, scene + 1);
-         drawScene(scene);
+        scene = Math.min(3, scene + 1);
+        drawScene(scene);
       });
 
   } else {
@@ -163,12 +165,12 @@ function drawScene(i) {
     d3.select("#controls")
       .append("div")
       .attr("class", "annotation")
-      .style("margin-left", "20px")
       .text("Explore: use the slider below");
 
-    // disable the Next button
-    d3.select("#next-btn").attr("disabled", true);
+    d3.select("#next-btn")
+      .text("Explore")
+      .attr("disabled", true);
 
-    // (here you'll wire up your slider, zoom, and tooltips)
+    // …slider + zoom + tooltip initialization goes here…
   }
 }
