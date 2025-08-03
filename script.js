@@ -105,23 +105,21 @@ function drawBaseMap() {
 }
 
 function updateLegend(colorScale) {
-  // remove old legend & gradient
   svg.selectAll(".legend").remove();
   svg.select("defs#legend-gradient").remove();
 
-  const legendWidth  = 300,
+  const legendWidth  = 200,  // shrink it a bit
         legendHeight = 8,
-        padRight     = 20,
+        padLeft      = 20,
         padBottom    = 30;
 
-  // 1. Create a defs with a linearGradient
+  // gradient defs…
   const defs = svg.append("defs");
   const grad = defs.append("linearGradient")
     .attr("id", "legend-gradient")
     .attr("x1", "0%").attr("y1", "0%")
     .attr("x2", "100%").attr("y2", "0%");
 
-  // 2. Two stops: start (0) and end (max)
   const [minVal, maxVal] = colorScale.domain();
   grad.append("stop")
       .attr("offset", "0%")
@@ -130,20 +128,20 @@ function updateLegend(colorScale) {
       .attr("offset", "100%")
       .attr("stop-color", colorScale(maxVal));
 
-  // 3. Legend group positioned bottom-right
-  const legendX = width - legendWidth - padRight;
+  // position in bottom-left
+  const legendX = padLeft;
   const legendY = height - padBottom;
   const legend = svg.append("g")
     .attr("class", "legend")
     .attr("transform", `translate(${legendX},${legendY})`);
 
-  // 4. Draw the color bar
+  // the bar
   legend.append("rect")
     .attr("width",  legendWidth)
     .attr("height", legendHeight)
     .style("fill", "url(#legend-gradient)");
 
-  // 5. Scale & axis for numeric labels
+  // the axis
   const legendScale = d3.scaleLinear()
     .domain([minVal, maxVal])
     .range([0, legendWidth]);
@@ -160,43 +158,50 @@ function updateLegend(colorScale) {
 }
 
 // 7. drawScene: recolor counties based on waveAverages[scene]
+const waveLabels  = ["Spring 2020 Surge", "Summer 2020 Surge", "Winter 2020 Surge"];
+const btnLabels   = ["Next",             "Next",              "Explore"];
+
 function drawScene(i) {
-  // recoil through three waves
+  // clear old annotation
+  d3.select("#controls").selectAll(".annotation").remove();
+
   if (i < 3) {
+    // recolor map for wave i
     const avgMap = waveAverages[i];
-    // build a color scale keyed to this wave’s max
     const maxVal = d3.max(Array.from(avgMap.values()));
-    const color = d3.scaleSequential(d3.interpolateReds)
-      .domain([0, maxVal]);
+    const color  = d3.scaleSequential(d3.interpolateReds).domain([0, maxVal]);
 
     svg.selectAll("path")
       .transition().duration(500)
-      .attr("fill", d => {
-        const val = avgMap.get(d.id) || 0;
-        return color(val);
-      });
+      .attr("fill", d => color(avgMap.get(d.id) || 0));
 
-    // update annotation text
-    d3.select("#controls").selectAll(".annotation").remove();
+    // update legend
+    updateLegend(color);
+
+    // add the wave label
     d3.select("#controls")
       .append("div")
       .attr("class", "annotation")
-      .style("margin-top", "8px")
-      .text(["Spring 2020 Surge","Summer 2020 Surge","Winter 2020 Surge"][i]);
-    
-    updateLegend(color);
+      .text(waveLabels[i]);
 
-    // update button label
+    // update button text & handler
     d3.select("#next-btn")
-      .text(i < 2 ? "Next" : "Explore")
+      .text(btnLabels[i])
       .on("click", () => {
         scene = Math.min(3, scene + 1);
         drawScene(scene);
       });
 
   } else {
-    // Explore mode placeholder: we'll expand this next
-    d3.select("#controls .annotation").text("Explore: use the slider below");
-    // (slider, zoom & tooltip logic to come in the next step)
+    // Explore mode
+    d3.select("#controls")
+      .append("div")
+      .attr("class", "annotation")
+      .text("Explore: use the slider below");
+
+    // hide or disable the Next button
+    d3.select("#next-btn").attr("disabled", true);
+
+    // … your slider + zoom + tooltip setup goes here …
   }
 }
