@@ -104,6 +104,61 @@ function drawBaseMap() {
       .attr("stroke-width", 0.2);
 }
 
+function updateLegend(colorScale) {
+  // remove old legend & gradient
+  svg.selectAll(".legend").remove();
+  svg.select("defs#legend-gradient").remove();
+
+  const legendWidth  = 300,
+        legendHeight = 8,
+        padRight     = 20,
+        padBottom    = 30;
+
+  // 1. Create a defs with a linearGradient
+  const defs = svg.append("defs");
+  const grad = defs.append("linearGradient")
+    .attr("id", "legend-gradient")
+    .attr("x1", "0%").attr("y1", "0%")
+    .attr("x2", "100%").attr("y2", "0%");
+
+  // 2. Two stops: start (0) and end (max)
+  const [minVal, maxVal] = colorScale.domain();
+  grad.append("stop")
+      .attr("offset", "0%")
+      .attr("stop-color", colorScale(minVal));
+  grad.append("stop")
+      .attr("offset", "100%")
+      .attr("stop-color", colorScale(maxVal));
+
+  // 3. Legend group positioned bottom-right
+  const legendX = width - legendWidth - padRight;
+  const legendY = height - padBottom;
+  const legend = svg.append("g")
+    .attr("class", "legend")
+    .attr("transform", `translate(${legendX},${legendY})`);
+
+  // 4. Draw the color bar
+  legend.append("rect")
+    .attr("width",  legendWidth)
+    .attr("height", legendHeight)
+    .style("fill", "url(#legend-gradient)");
+
+  // 5. Scale & axis for numeric labels
+  const legendScale = d3.scaleLinear()
+    .domain([minVal, maxVal])
+    .range([0, legendWidth]);
+
+  const legendAxis = d3.axisBottom(legendScale)
+    .ticks(5)
+    .tickFormat(d3.format(".0f"));
+
+  legend.append("g")
+    .attr("transform", `translate(0,${legendHeight})`)
+    .call(legendAxis)
+    .selectAll("text")
+      .style("font-size","10px");
+}
+
 // 7. drawScene: recolor counties based on waveAverages[scene]
 function drawScene(i) {
   // recoil through three waves
@@ -128,6 +183,8 @@ function drawScene(i) {
       .attr("class", "annotation")
       .style("margin-top", "8px")
       .text(["Spring 2020 Surge","Summer 2020 Surge","Winter 2020 Surge"][i]);
+    
+    updateLegend(color);
 
     // update button label
     d3.select("#next-btn")
