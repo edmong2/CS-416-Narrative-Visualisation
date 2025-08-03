@@ -1,2 +1,14 @@
-/* style.css */
-body { font-family: sans-serif; }
+body {
+  margin: 0;
+  font-family: sans-serif;
+  text-align: center;
+}
+#controls {
+  padding: 10px;
+  background: #f9f9f9;
+  border-bottom: 1px solid #ddd;
+}
+#map {
+  display: block;
+  margin: 0 auto;
+}

@@ -1,2 +1,1 @@
-// script.js
-console.log("Setup OK");
+console.log("Script loaded—and ready for D3!");
