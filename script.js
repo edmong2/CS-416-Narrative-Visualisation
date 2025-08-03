@@ -93,6 +93,22 @@ Promise.all([
 d3.select("#loading").style("display", "none");
 });
 
+// HTML legend: clears & redraws in #legend-container
+function updateLegendHTML(colorScale) {
+  const [minVal, maxVal] = colorScale.domain();
+  const lc = d3.select("#legend-container").html("");  // clear
+
+  // bar
+  lc.append("div")
+    .attr("class", "legend-bar")
+    .style("background", `linear-gradient(to right, ${colorScale(minVal)}, ${colorScale(maxVal)})`);
+
+  // numeric labels
+  const labels = lc.append("div").attr("class","legend-labels");
+  labels.append("span").text(Math.round(minVal));
+  labels.append("span").text(Math.round(maxVal));
+}
+
 // 6. drawBaseMap: append all counties with neutral fill
 function drawBaseMap() {
   svg.selectAll("path")
@@ -104,92 +120,42 @@ function drawBaseMap() {
       .attr("stroke-width", 0.2);
 }
 
-function updateLegend(colorScale) {
-  svg.selectAll(".legend").remove();
-  svg.select("defs#legend-gradient").remove();
 
-  const legendWidth  = 200,  // shrink it a bit
-        legendHeight = 8,
-        padLeft      = 20,
-        padBottom    = 30;
-
-  // gradient defs…
-  const defs = svg.append("defs");
-  const grad = defs.append("linearGradient")
-    .attr("id", "legend-gradient")
-    .attr("x1", "0%").attr("y1", "0%")
-    .attr("x2", "100%").attr("y2", "0%");
-
-  const [minVal, maxVal] = colorScale.domain();
-  grad.append("stop")
-      .attr("offset", "0%")
-      .attr("stop-color", colorScale(minVal));
-  grad.append("stop")
-      .attr("offset", "100%")
-      .attr("stop-color", colorScale(maxVal));
-
-  // position in bottom-left
-  const legendX = padLeft;
-  const legendY = height - padBottom;
-  const legend = svg.append("g")
-    .attr("class", "legend")
-    .attr("transform", `translate(${legendX},${legendY})`);
-
-  // the bar
-  legend.append("rect")
-    .attr("width",  legendWidth)
-    .attr("height", legendHeight)
-    .style("fill", "url(#legend-gradient)");
-
-  // the axis
-  const legendScale = d3.scaleLinear()
-    .domain([minVal, maxVal])
-    .range([0, legendWidth]);
-
-  const legendAxis = d3.axisBottom(legendScale)
-    .ticks(5)
-    .tickFormat(d3.format(".0f"));
-
-  legend.append("g")
-    .attr("transform", `translate(0,${legendHeight})`)
-    .call(legendAxis)
-    .selectAll("text")
-      .style("font-size","10px");
-}
-
-// 7. drawScene: recolor counties based on waveAverages[scene]
-const waveLabels  = ["Spring 2020 Surge", "Summer 2020 Surge", "Winter 2020 Surge"];
-const btnLabels   = ["Next",             "Next",              "Explore"];
+// wave annotation texts and button labels
+const waveLabels = ["Spring 2020 Surge", "Summer 2020 Surge", "Winter 2020 Surge"];
+const btnLabels  = ["Next",             "Next",              "Explore"];
 
 function drawScene(i) {
-  // clear old annotation
+  // remove any old annotation div
   d3.select("#controls").selectAll(".annotation").remove();
 
   if (i < 3) {
-    // recolor map for wave i
+    // 1) recolor counties
     const avgMap = waveAverages[i];
     const maxVal = d3.max(Array.from(avgMap.values()));
     const color  = d3.scaleSequential(d3.interpolateReds).domain([0, maxVal]);
 
     svg.selectAll("path")
-      .transition().duration(500)
-      .attr("fill", d => color(avgMap.get(d.id) || 0));
+       .transition().duration(500)
+       .attr("fill", d => color(avgMap.get(d.id) || 0));
 
-    // update legend
-    updateLegend(color);
+    // 2) update HTML legend
+    updateLegendHTML(color);
 
-    // add the wave label
+    // 3) add the wave text
     d3.select("#controls")
       .append("div")
       .attr("class", "annotation")
+      .style("margin-left", "20px")
       .text(waveLabels[i]);
 
-    // update button text & handler
+    // 4) update button text & click handler
     d3.select("#next-btn")
       .text(btnLabels[i])
+      .attr("disabled", null)        // re-enable if it was disabled
       .on("click", () => {
-        scene = Math.min(3, scene + 1);
-        drawScene(scene);
+         scene = Math.min(3, scene + 1);
+         drawScene(scene);
       });
 
   } else {
@@ -197,11 +163,12 @@ function drawScene(i) {
     d3.select("#controls")
       .append("div")
       .attr("class", "annotation")
+      .style("margin-left", "20px")
       .text("Explore: use the slider below");
 
-    // hide or disable the Next button
+    // disable the Next button
     d3.select("#next-btn").attr("disabled", true);
 
-    // … your slider + zoom + tooltip setup goes here …
+    // (here you'll wire up your slider, zoom, and tooltips)
   }
 }

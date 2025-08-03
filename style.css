@@ -4,25 +4,52 @@ body {
   text-align: center;
 }
 #controls {
+  width: 100%;
+  box-sizing: border-box;
   padding: 10px;
   background: #f9f9f9;
   border-bottom: 1px solid #ddd;
-  width: 100%;
-  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 #map {
-  display: block;
   width: 100%;
-  height: auto;   /* preserves aspect ratio */
+  height: auto;  /* keeps aspect ratio */
+  display: block;
 }
 
+#legend-container {
+  margin: 10px auto;
+  width: 100%;
+  max-width: 960px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: sans-serif;
+  font-size: 12px;
+}
+
+.legend-bar {
+  flex-shrink: 0;
+  width: 200px;
+  height: 12px;
+  margin-right: 8px;
+  background: lightgray; /* will be overridden by JS */
+}
+
+.legend-labels {
+  display: flex;
+  justify-content: space-between;
+  width: 200px;
+}
 
 #viz-container {
-  position: relative;
-  max-width: 960px;
   margin: 0 auto;
   width: 100%;
+  max-width: 960px;
+  position: relative;
 }
 
 #loading {
