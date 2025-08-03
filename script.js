@@ -23,6 +23,7 @@ const projection = d3.geoAlbersUsa()
 
 const path = d3.geoPath().projection(projection);
 
+d3.select("#loading").style("display", "flex");
 // 4. Load TopoJSON + CSV
 Promise.all([
   d3.json(topoURL),
@@ -86,8 +87,11 @@ Promise.all([
   drawBaseMap();
   drawScene(0);
 })
-.catch(console.error);
-
+.catch(console.error)
+.finally(() => {
+// 2. Hide the loader once the first scene is on screen
+d3.select("#loading").style("display", "none");
+});
 
 // 6. drawBaseMap: append all counties with neutral fill
 function drawBaseMap() {

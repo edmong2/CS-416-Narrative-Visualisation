@@ -6,12 +6,14 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="controls">
-    <button id="next-btn">Next</button>
-    <!-- Slider will appear here in Explore mode -->
-  </div>
-  <svg id="map" width="960" height="600"></svg>
-
+    <div id="viz-container" style="position:relative;">
+        <div id="loading">Loading…</div>
+        <div id="controls">
+            <button id="next-btn">Next</button>
+            <!-- Slider will appear here in Explore mode -->
+        </div>
+        <svg id="map" width="960" height="600"></svg>
+    </div>
   <script src="https://d3js.org/d3.v6.min.js"></script>
   <script src="https://unpkg.com/topojson-client@3"></script>
   <script src="script.js"></script>
