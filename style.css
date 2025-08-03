@@ -35,33 +35,27 @@ html, body {
   margin: 0 auto;     /* center if the container is wider */
 }
 
-/* Legend container sits just beneath the map */
-#legend-container {
-  width: 100%;
-  max-width: 960px;
-  margin: 8px auto 20px; /* top / auto‐center / bottom */
-  text-align: center;
-  font-family: sans-serif;
-  font-size: 12px;
+/* A flex‐column container that keeps bar + labels together */
+.legend-item {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-/* the colored bar itself */
+/* The bar (same as before) */
 .legend-bar {
-  display: inline-block;
   width: 220px;
   height: 12px;
-  vertical-align: middle;
-  background: lightgray; /* will be overridden by JS */
-  margin-right: 8px;
+  margin-bottom: 4px;
 }
 
-/* numeric labels, aligned to the ends of the bar */
+/* The labels under the bar, spaced to the ends */
 .legend-labels {
   display: inline-flex;
   justify-content: space-between;
   width: 220px;
-  vertical-align: middle;
 }
+
 
 
 #loading {

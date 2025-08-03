@@ -98,33 +98,26 @@ d3.select("#loading").style("display", "none");
 });
 
 
-// 1) HTML legend helper
 function updateLegendHTML(colorScale) {
   const [minVal, maxVal] = colorScale.domain();
-  const lc = d3.select("#legend-container").html("");  // clear previous
+  const lc = d3.select("#legend-container").html("");
 
-  // bar
-  lc.append("div")
+  // create one wrapper that holds the bar *and* its labels
+  const item = lc.append("div")
+    .attr("class","legend-item");
+
+  // the gradient bar
+  item.append("div")
     .attr("class", "legend-bar")
     .style("background",
       `linear-gradient(to right, ${colorScale(minVal)}, ${colorScale(maxVal)})`
     );
 
-  // labels
-  const labels = lc.append("div").attr("class","legend-labels");
+  // labels row
+  const labels = item.append("div")
+    .attr("class","legend-labels");
   labels.append("span").text(Math.round(minVal));
   labels.append("span").text(Math.round(maxVal));
-}
-
-// 6. drawBaseMap: append all counties with neutral fill
-function drawBaseMap() {
-  svg.selectAll("path")
-    .data(countyFeatures)
-    .enter().append("path")
-      .attr("d", path)
-      .attr("fill", "#eee")
-      .attr("stroke", "#999")
-      .attr("stroke-width", 0.2);
 }
 
 
