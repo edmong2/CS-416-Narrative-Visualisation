@@ -29,9 +29,12 @@ html, body {
 
 /* 3) SVG map (middle) */
 #map {
-  flex: 1 1 0;      /* allow it to grow and shrink */
-  width: 100%;      /* full container width */
-  min-height: 0;    /* critical for flex children */
+  flex: 0 0 auto;        /* don’t flex‐grow or flex‐shrink */
+  width: 100%;           /* span the container width */
+  max-width: 960px;      /* cap at your design width */
+  height: 600px;         /* fixed height like before */
+  margin: 0 auto;        /* center it */
+  display: block;
 }
 
 /* 4) Legend (bottom) */
