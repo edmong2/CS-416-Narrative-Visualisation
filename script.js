@@ -1,4 +1,5 @@
 // script.js
+console.log("Script loaded—and ready for D3!");
 
 // 1. Data URLs
 const topoURL   = "https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json";
