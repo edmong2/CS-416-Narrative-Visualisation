@@ -582,7 +582,6 @@ function drawScene(i) {
     d3.select("#controls")
       .append("div")
       .attr("class", "annotation")
-      .text((viewMode === 'daily' ? 'Daily new cases' : 'Cumulative cases') + ': use the timeline below');
     d3.select("#next-btn")
       .text("Explore")
       .attr("disabled", true);
