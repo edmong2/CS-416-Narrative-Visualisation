@@ -36,7 +36,6 @@ function startAutoplay() {
   let intervalMs = baseMs / autoplaySpeed;
   autoplayInterval = setInterval(() => {
     if (!autoplay) return;
-    if (overlayActive) return;
     if (timelineIndex < dates.length - 1) {
       timelineIndex++;
       updateTimelineDate(false);
@@ -52,6 +51,7 @@ let scene = 3;
 let countyFeatures,
     dates,
     dailyNewCasesByDate,
+    monthlyCasesByDate,
     cumulativeCasesByDate,
     waveAverages,
     globalMax,
@@ -62,11 +62,31 @@ let viewMode = 'cumulative'; // default
 
 // Key narrative pause points (must be declared before any function that uses them)
 const keyStages = [
-  { date: '2020-05-31', title: 'End of Wave 1', desc: 'The first major surge of COVID-19 cases in the US comes to a close.' },
-  { date: '2020-09-30', title: 'End of Wave 2', desc: 'The summer wave subsides, but cases remain high in some regions.' },
-  { date: '2021-01-31', title: 'End of Wave 3', desc: 'The largest wave so far peaks and begins to decline.' },
-  { date: '2021-07-01', title: 'Delta Variant Arrives', desc: 'The Delta variant leads to a new surge in cases.' },
-  { date: '2021-12-15', title: 'Omicron Variant Arrives', desc: 'Omicron rapidly becomes the dominant strain, driving record case numbers.' }
+ {
+    date: '2020-05-31',
+    title: 'End of Wave 1',
+    desc:  'After rapid exponential growth in March and April, driven by outbreaks in New York City, Seattle and other early hotspots,the first national surge tapers off. Hospitals stabilise, with case counts settling into a plateau around 20-25k new cases per day as lockdowns and social distancing take effect.'
+  },
+  {
+    date: '2020-09-30',
+    title: 'End of Wave 2',
+    desc:  'The “Sun Belt” wave in June-August, fueled by reopenings in Florida, Texas, Arizona and other southern states,slows by late September. Although daily averages fall from their July highs of 70k, many regions sustain elevated transmission into the fall, setting the stage for winter resurgence.'
+  },
+  {
+    date: '2021-01-31',
+    title: 'End of Wave 3',
+    desc:  'The post-holiday winter wave, driven by colder weather and relaxed gatherings, reaches its peak with over 250k new cases per day, an all-time high. By January’s end, daily counts begin a gradual decline, even as hospitalisations remain severe in many areas.'
+  },
+  {
+    date: '2021-07-01',
+    title: 'Delta Variant Emerges',
+    desc:  'Just as case counts dipped into spring lows, the highly transmissible Delta variant takes hold. Beginning in late June, daily new cases climb from under 20k back up toward 50k, with rural and under-vaccinated counties seeing disproportionate surges.'
+  },
+  {
+    date: '2021-12-15',
+    title: 'Omicron Variant Surges',
+    desc:  'By mid-December, the Omicron variant, a far more contagious strain than any prior, drives new daily cases past 400k. Surges with intense hotspots nationwide are seen, demonstrating both its rapid spread and the limits of prior immunity.'
+  }
 ];
 // Map key dates to timeline indices
 let keyStageIndices = [];
@@ -90,59 +110,61 @@ function computeKeyStageIndices() {
   }).filter(idx => idx !== null);
 }
 
-// Overlay trigger logic - show overlay at key timeline indices
-let shownOverlays = new Set();
-let wasAutoplayingBeforeOverlay = false;
-let overlayActive = false;
-function checkAndShowOverlay(idx) {
-  keyStages.forEach((stage, i) => {
-    if (keyStageIndices[i] === idx && !shownOverlays.has(i)) {
-      wasAutoplayingBeforeOverlay = autoplay;
-      overlayActive = true;
-      stopAutoplay();
-      showStageOverlay(stage, i);
-      shownOverlays.add(i);
+// Annotation panel logic for key stages (sidebar, with pause/continue)
+let currentKeyStageIndex = null;
+let annotationPauseActive = false;
+let wasAutoplayingBeforeAnnotation = false;
+function checkAndShowAnnotation(idx) {
+  let found = null;
+  keyStageIndices.forEach((stageIdx, i) => {
+    if (stageIdx === idx) {
+      found = i;
     }
   });
+  if (found !== null && found !== currentKeyStageIndex) {
+    // Pause playback and block timeline advancement
+    wasAutoplayingBeforeAnnotation = autoplay;
+    annotationPauseActive = true;
+    stopAutoplay();
+    showKeyStageAnnotation(keyStages[found], found);
+    currentKeyStageIndex = found;
+  } else if (found === null && currentKeyStageIndex !== null) {
+    removeKeyStageAnnotation();
+    annotationPauseActive = false;
+    currentKeyStageIndex = null;
+  }
 }
 
 
-// Overlay modal implementation
-function showStageOverlay(stage, idx) {
-  // Remove any existing overlay
-  d3.select('body').selectAll('.stage-overlay').remove();
-  // Add overlay
-  const overlay = d3.select('body')
-    .append('div')
-    .attr('class', 'stage-overlay')
-    .style('position', 'fixed')
-    .style('top', 0)
-    .style('left', 0)
-    .style('width', '100vw')
-    .style('height', '100vh')
-    .style('background', 'rgba(0,0,0,0.55)')
-    .style('z-index', 99999)
-    .style('display', 'flex')
-    .style('align-items', 'center')
-    .style('justify-content', 'center');
 
-  const box = overlay.append('div')
-    .style('background', '#fff')
-    .style('padding', '32px 36px')
-    .style('border-radius', '12px')
-    .style('box-shadow', '0 4px 32px rgba(0,0,0,0.25)')
-    .style('max-width', '420px')
-    .style('text-align', 'center')
-    .style('z-index', 100000);
-
-  box.append('h2')
+// Annotation panel implementation (sidebar)
+function showKeyStageAnnotation(stage, idx) {
+  removeKeyStageAnnotation();
+  // Add annotation panel fixed to the right side of the viewport
+  let panel = d3.select('#annotation-panel');
+  if (panel.empty()) {
+    panel = d3.select('body').append('div').attr('id', 'annotation-panel');
+    panel.style('position', 'fixed')
+      .style('top', '50%')
+      .style('right', '32px')
+      .style('transform', 'translateY(-50%)')
+      .style('width', '340px')
+      .style('background', '#fff')
+      .style('padding', '24px 28px')
+      .style('border-radius', '10px')
+      .style('box-shadow', '0 2px 16px rgba(0,0,0,0.13)')
+      .style('z-index', 1000)
+      .style('font-family', 'sans-serif');
+  }
+  panel.html('');
+  panel.append('h2')
     .text(stage.title)
-    .style('margin-bottom', '12px');
-  box.append('p')
+    .style('margin-bottom', '10px');
+  panel.append('p')
     .text(stage.desc)
-    .style('margin-bottom', '24px');
-  box.append('button')
-    .attr('id', 'continue-overlay-btn')
+    .style('margin-bottom', '18px');
+  panel.append('button')
+    .attr('id', 'continue-annotation-btn')
     .text('Continue')
     .style('font-size', '16px')
     .style('padding', '8px 24px')
@@ -153,13 +175,16 @@ function showStageOverlay(stage, idx) {
     .style('cursor', 'pointer')
     .on('click', function(event) {
       event.stopPropagation();
-      d3.select('.stage-overlay').remove();
-      overlayActive = false;
-      // Only resume autoplay if it was active before overlay
-      if (wasAutoplayingBeforeOverlay) {
+      removeKeyStageAnnotation();
+      annotationPauseActive = false;
+      if (wasAutoplayingBeforeAnnotation) {
         startAutoplay();
       }
     });
+}
+
+function removeKeyStageAnnotation() {
+  d3.select('#annotation-panel').remove();
 }
 
 // Patch timeline and autoplay logic to use updateExploreMap and overlays
@@ -167,7 +192,10 @@ function updateTimelineDate(useTransition = true) {
   d3.select("#timeline-date").text(dates[timelineIndex]);
   d3.select("#timeline-slider").property("value", timelineIndex);
   updateExploreMap(timelineIndex, useTransition);
-  checkAndShowOverlay(timelineIndex);
+  // Block timeline advancement if annotation pause is active
+  if (annotationPauseActive) return;
+  checkAndShowAnnotation(timelineIndex);
+  if (window._tooltipUpdateFn) window._tooltipUpdateFn();
 }
 
 function startAutoplay() {
@@ -177,9 +205,7 @@ function startAutoplay() {
   let intervalMs = baseMs / autoplaySpeed;
   autoplayInterval = setInterval(() => {
     if (!autoplay) return; // Respect pause immediately
-    if (overlayActive) {
-      return; // Pause timeline advancement while overlay is visible
-    }
+    if (annotationPauseActive) return; // Block timeline advancement at key stage
     if (timelineIndex < dates.length - 1) {
       timelineIndex++;
       updateTimelineDate(false);
@@ -303,20 +329,49 @@ function addTooltip() {
   // Attach events to counties after map is drawn
   // Called after every map update
   function attachEvents(getValue, getLabel) {
+    // Track hovered county and mouse position
+    if (!window._hoveredCountyDatum) window._hoveredCountyDatum = null;
+    if (!window._hoveredCountyMouse) window._hoveredCountyMouse = null;
+    function showTooltip(d, event) {
+      const tooltip = d3.select(".county-tooltip");
+      const value = getValue(d);
+      const label = getLabel(d);
+      const dateStr = dates[timelineIndex];
+      let monthly = null, cumulative = null;
+      if (monthlyCasesByDate && monthlyCasesByDate.has(dateStr)) {
+        monthly = monthlyCasesByDate.get(dateStr).get(d.id);
+      }
+      if (cumulativeCasesByDate && cumulativeCasesByDate.has(dateStr)) {
+        cumulative = cumulativeCasesByDate.get(dateStr).get(d.id);
+      }
+      let html = `<strong>${label}</strong><br>`;
+      html += `New cases: ${value !== undefined ? value : 'N/A'}<br>`;
+      html += `30-day cases: ${monthly !== undefined && monthly !== null ? monthly : 'N/A'}<br>`;
+      html += `Total cases: ${cumulative !== undefined && cumulative !== null ? cumulative : 'N/A'}`;
+      let x = event ? event.pageX : (window._hoveredCountyMouse ? window._hoveredCountyMouse[0] : 0);
+      let y = event ? event.pageY : (window._hoveredCountyMouse ? window._hoveredCountyMouse[1] : 0);
+      tooltip.html(html)
+        .style("left", (x + 15) + "px")
+        .style("top", (y - 10) + "px")
+        .style("display", "block");
+    }
     svg.selectAll("path")
       .on("mousemove", function(event, d) {
-        const tooltip = d3.select(".county-tooltip");
-        const [mx, my] = d3.pointer(event);
-        const value = getValue(d);
-        const label = getLabel(d);
-        tooltip.html(`<strong>${label}</strong><br>Cases: ${value !== undefined ? value : 'N/A'}`)
-          .style("left", (event.pageX + 15) + "px")
-          .style("top", (event.pageY - 10) + "px")
-          .style("display", "block");
+        window._hoveredCountyDatum = d;
+        window._hoveredCountyMouse = [event.pageX, event.pageY];
+        showTooltip(d, event);
       })
       .on("mouseleave", function() {
+        window._hoveredCountyDatum = null;
+        window._hoveredCountyMouse = null;
         d3.select(".county-tooltip").style("display", "none");
       });
+    // Expose for timeline update (always overwrite)
+    window._tooltipUpdateFn = () => {
+      if (window._hoveredCountyDatum) {
+        showTooltip(window._hoveredCountyDatum, null);
+      }
+    };
   }
 
   // Expose for use after each map update
@@ -345,23 +400,39 @@ Promise.all([
   filteredRaw.sort((a, b) => a.date - b.date || a.fips.localeCompare(b.fips));
 
 
-  //Compute dailyNewCasesByDate and cumulativeCasesByDate
-  dailyNewCasesByDate = new Map();
-  cumulativeCasesByDate = new Map();
-  const byFips = d3.group(filteredRaw, d => d.fips);
-  byFips.forEach(arr => {
-    arr.forEach((d, i) => {
-      const dateStr = d3.timeFormat("%Y-%m-%d")(d.date);
-      const prev = i > 0 ? arr[i - 1].cases : 0;
-      const newCases = d.cases - prev;
-      if (!dailyNewCasesByDate.has(dateStr)) {
+    // Compute dailyNewCasesByDate, cumulativeCasesByDate, and monthlyCasesByDate (30-day rolling sum)
+    dailyNewCasesByDate = new Map();
+    cumulativeCasesByDate = new Map();
+    monthlyCasesByDate = new Map();
+    const byFips = d3.group(filteredRaw, d => d.fips);
+    byFips.forEach(arr => {
+    for (let i = 0; i < arr.length; ++i) {
+        const d = arr[i];
+        const dateStr = d3.timeFormat("%Y-%m-%d")(d.date);
+        const prev = i > 0 ? arr[i - 1].cases : 0;
+        const newCases = d.cases - prev;
+        if (!dailyNewCasesByDate.has(dateStr)) {
         dailyNewCasesByDate.set(dateStr, new Map());
         cumulativeCasesByDate.set(dateStr, new Map());
-      }
-      dailyNewCasesByDate.get(dateStr).set(d.fips, newCases);
-      cumulativeCasesByDate.get(dateStr).set(d.fips, d.cases);
+        }
+        dailyNewCasesByDate.get(dateStr).set(d.fips, newCases);
+        cumulativeCasesByDate.get(dateStr).set(d.fips, d.cases);
+    }
+    // Compute 30-day rolling sum for this county
+    for (let i = 0; i < arr.length; ++i) {
+        const d = arr[i];
+        const dateStr = d3.timeFormat("%Y-%m-%d")(d.date);
+        let sum = 0;
+        for (let j = Math.max(0, i - 29); j <= i; ++j) {
+        const prev = j > 0 ? arr[j - 1].cases : 0;
+        sum += arr[j].cases - prev;
+        }
+        if (!monthlyCasesByDate.has(dateStr)) {
+        monthlyCasesByDate.set(dateStr, new Map());
+        }
+        monthlyCasesByDate.get(dateStr).set(d.fips, sum);
+    }
     });
-  });
 
 
 
@@ -549,23 +620,98 @@ function updateExploreMap(idx, useTransition = true) {
   if (viewMode === 'daily') {
     casesMap = dailyNewCasesByDate.get(date);
     maxVal = globalMax;
+    // Use threshold scale for daily
+    const color = getThresholdColorScale(maxVal);
+    const sel = svg.selectAll('path');
+    if (useTransition) {
+      sel.transition().duration(100)
+        .attr('fill', d => color((casesMap && casesMap.get(d.id)) || 0));
+    } else {
+      sel.interrupt().attr('fill', d => color((casesMap && casesMap.get(d.id)) || 0));
+    }
+    updateLegendHTML(false);
+    addTooltip.attachEvents(
+      d => (casesMap && casesMap.get(d.id)),
+      d => d.properties && d.properties.name ? d.properties.name : d.id
+    );
   } else {
+    // Cumulative: use log scale with gamma correction
     casesMap = cumulativeCasesByDate.get(date);
     maxVal = cumulativeMax;
+    const logMax = Math.log10(maxVal || 1);
+    const gamma = 1.7; // Higher = more aggressive, try 1.5-2.0
+    const logColor = d3.scaleSequential(d3.interpolateReds)
+      .domain([0, 1])
+      .clamp(true);
+    const sel = svg.selectAll('path');
+    if (useTransition) {
+      sel.transition().duration(100)
+        .attr('fill', d => {
+          const v = (casesMap && casesMap.get(d.id)) || 0;
+          if (v > 0) {
+            let norm = Math.log10(v) / logMax;
+            norm = Math.pow(norm, gamma);
+            return logColor(norm);
+          }
+          return '#fff';
+        });
+    } else {
+      sel.interrupt().attr('fill', d => {
+        const v = (casesMap && casesMap.get(d.id)) || 0;
+        if (v > 0) {
+          let norm = Math.log10(v) / logMax;
+          norm = Math.pow(norm, gamma);
+          return logColor(norm);
+        }
+        return '#fff';
+      });
+    }
+    updateLogLegend(maxVal, gamma);
+    addTooltip.attachEvents(
+      d => (casesMap && casesMap.get(d.id)),
+      d => d.properties && d.properties.name ? d.properties.name : d.id
+    );
   }
-  const color = getThresholdColorScale(maxVal);
-  const sel = svg.selectAll('path');
-  if (useTransition) {
-    sel.transition().duration(100)
-      .attr('fill', d => color((casesMap && casesMap.get(d.id)) || 0));
-  } else {
-    sel.interrupt().attr('fill', d => color((casesMap && casesMap.get(d.id)) || 0));
+}
+
+// --- Logarithmic legend for cumulative view ---
+function updateLogLegend(maxVal, gamma = 1.7) {
+  const logMax = Math.log10(maxVal || 1);
+  const logMaxCeil = Math.ceil(logMax);
+  const ticks = [];
+  for (let i = 0; i <= logMaxCeil; ++i) {
+    ticks.push(Math.pow(10, i));
   }
-  // Update legend
-  updateLegendHTML(viewMode === 'cumulative');
-  // Update tooltips
-  addTooltip.attachEvents(
-    d => (casesMap && casesMap.get(d.id)),
-    d => d.properties && d.properties.name ? d.properties.name : d.id
-  );
+  const logColor = d3.scaleSequential(d3.interpolateReds)
+    .domain([0, 1])
+    .clamp(true);
+  d3.select("#legend-container").selectAll('.legend-item').remove();
+  const item = d3.select("#legend-container")
+    .append("div")
+    .attr("class","legend-item");
+  // Bar
+  const bar = item.append("div")
+    .attr("class", "legend-bar")
+    .style("display", "flex");
+  const nSteps = 60;
+  for (let i = 0; i < nSteps; ++i) {
+    let frac = i / (nSteps - 1);
+    // Invert gamma to match map
+    let logFrac = Math.pow(frac, 1 / gamma);
+    bar.append("div")
+      .style("flex", "1 1 0")
+      .style("height", "100%")
+      .style("background", logColor(frac));
+  }
+  // Labels
+  const labels = item.append("div")
+    .attr("class","legend-labels");
+  ticks.forEach(t => labels.append("span").text(t));
+  // Annotation
+  item.append("div")
+    .attr("class", "legend-note")
+    .style("font-size", "12px")
+    .style("color", "#666")
+    .style("margin-top", "2px")
+    .text("Cumulative cases (log scale, gamma " + gamma + ")");
 }
